@@ -5,29 +5,6 @@
   ******************************************************************************
   *
   * COPYRIGHT(c) 2016 STMicroelectronics
-  *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  *
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
@@ -39,25 +16,25 @@
 
 /* USER CODE BEGIN Includes */
 #include "registersTIM1.h"             /* TIMER1  Register adresleri*/
-#include "registerOperations.h"        /* Register iþlemleri için tanýmlar*/
+#include "registerOperations.h"        /* Register iÃ¾lemleri iÃ§in tanÃ½mlar*/
 #include "registersNVIC.h"             /* NVIC  Register adresleri*/
 #include "registersEXTI.h"             /* EXTI  Register adresleri*/
 #include "registersGPIOA.h"            /* GPIOA Register adresleri*/
-#include "pendingBitsEXTI.h"           /* EXTIn lines için pending bitleri:PendingBitn*/
+#include "pendingBitsEXTI.h"           /* EXTIn lines iÃ§in pending bitleri:PendingBitn*/
 
-#define  PERIOD_VALUE       (1200 - 1)  /* Period Value:40kHz için 1200  */
+#define  PERIOD_VALUE       (1200 - 1)  /* Period Value:40kHz iÃ§in 1200  */
 #define  PULSE1_VALUE_MAX   540         /* Maximum Capture Compare Value:%45 dutyCycle */
-#define  PULSE1_VALUE       240         /* Baþlangýç dutyCycle deðeri*/
-#define  DEAD_TIME          0x30        /* Complementary PWM ölü zamaný = 1u0s*/ 
+#define  PULSE1_VALUE       240         /* BaÃ¾langÃ½Ã§ dutyCycle deÃ°eri*/
+#define  DEAD_TIME          0x30        /* Complementary PWM Ã¶lÃ¼ zamanÃ½ = 1u0s*/ 
 
 #define  DELAY_VALUE         10   /* Delay Value default 100 ms  */
-#define  DELTA_FRQ           3    /* Frekans tarama adýmlarý; 3=100 Hz(Clk:48Mhz)*/
-#define  SWEEP_RANGE         20   /* Taramanýn kaç adýmda yapýlacaðý:1-20 adým  */
+#define  DELTA_FRQ           3    /* Frekans tarama adÃ½mlarÃ½; 3=100 Hz(Clk:48Mhz)*/
+#define  SWEEP_RANGE         20   /* TaramanÃ½n kaÃ§ adÃ½mda yapÃ½lacaÃ°Ã½:1-20 adÃ½m  */
 
-#define  IRQn01              5    /* EXTI0_1 line için IRQ numarasý*/
-#define  IRQn23              6    /* EXTI2_3 line için IRQ numarasý*/
-#define  IRQn415             7    /* EXTI4_15 line için IRQ numarasý*/
-#define  PendingBit0 (0x00000001) /* EXTI0 line Pending bit;Hepsi .h dosyasýnda*/
+#define  IRQn01              5    /* EXTI0_1 line iÃ§in IRQ numarasÃ½*/
+#define  IRQn23              6    /* EXTI2_3 line iÃ§in IRQ numarasÃ½*/
+#define  IRQn415             7    /* EXTI4_15 line iÃ§in IRQ numarasÃ½*/
+#define  PendingBit0 (0x00000001) /* EXTI0 line Pending bit;Hepsi .h dosyasÃ½nda*/
 
 /* USER CODE END Includes */
 
@@ -88,13 +65,13 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
-/*Benim yazdýðým fonksiyonlarýn prototipleri*/
+/*Benim yazdÃ½Ã°Ã½m fonksiyonlarÃ½n prototipleri*/
 uint32_t sweepBand (uint32_t nextF, uint32_t stp, int delta, uint32_t dutyC);
 void generatePwm (uint32_t nextF, uint32_t dutyC);
 uint32_t getDutyCyle (void);
 void delay (uint32_t msWait);
 
-void MENU_Function(void); /* MENU butonu iþlemleri*/
+void MENU_Function(void); /* MENU butonu iÃ¾lemleri*/
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -117,10 +94,10 @@ int main(void)
   uint32_t *ptrToRegGenel, *pR, *ptr;
   uint32_t step[21]={1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,10};
   uint32_t numberOfSteps=1;
-  uint32_t centerFr = PERIOD_VALUE;/*Tarama merkez frekansý. 1200 için 40kHz*/
-  uint32_t nextFr = centerFr; /* Tedbiren ilk deðer veriliyor*/
+  uint32_t centerFr = PERIOD_VALUE;/*Tarama merkez frekansÃ½. 1200 iÃ§in 40kHz*/
+  uint32_t nextFr = centerFr; /* Tedbiren ilk deÃ°er veriliyor*/
   int delta = DELTA_FRQ;
-  uint32_t dutyCycleSet = PULSE1_VALUE; /* DC için baþlangýç deðeri*/
+  uint32_t dutyCycleSet = PULSE1_VALUE; /* DC iÃ§in baÃ¾langÃ½Ã§ deÃ°eri*/
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -141,17 +118,17 @@ int main(void)
   ptr = &TIM1_DIER;
   *ptr &= (0x000000C3);
  
-  numberOfSteps = SWEEP_RANGE;/* Taramanýn kaç adýmda yapýlacaðý*/
+  numberOfSteps = SWEEP_RANGE;/* TaramanÃ½n kaÃ§ adÃ½mda yapÃ½lacaÃ°Ã½*/
   if ((numberOfSteps) < 0 | (numberOfSteps > 20)) { 
-  Error_Handler(); /* Adým sayýsý sýnýrlarýn dýþýnda ise hata ver*/
+  Error_Handler(); /* AdÃ½m sayÃ½sÃ½ sÃ½nÃ½rlarÃ½n dÃ½Ã¾Ã½nda ise hata ver*/
   }
   
-  /* Configure LED4-6: izleme amaçlý kullanýlabilir */
+  /* Configure LED4-6: izleme amaÃ§lÃ½ kullanÃ½labilir */
   BSP_LED_Init(LED3);
   BSP_LED_Init(LED4); 
   BSP_LED_Init(LED5);
   BSP_LED_Init(LED6);
-  BSP_LED_Off(LED3) ; /*LED3 söndür*/
+  BSP_LED_Off(LED3) ; /*LED3 sÃ¶ndÃ¼r*/
    
   /* Start PWM signal generation on TIM1_Channel 1 */ 
   if(HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK)
@@ -223,52 +200,52 @@ void SystemClock_Config(void)
 /* Private functions ---------------------------------------------------------*/
 
 
-/** PWM Frekansýný Tarama fonksiyonu*******************************************/
+/** PWM FrekansÃ½nÃ½ Tarama fonksiyonu*******************************************/
 uint32_t sweepBand (uint32_t nextF, uint32_t stp, int delta, uint32_t dutyC)
  {
     if (stp == 0) {
     stp = 1;}
     for (uint32_t i=0; i<= stp; i++){
-     nextF += delta;  /*Frekansý 1 adým artýr/azalt*/
+     nextF += delta;  /*FrekansÃ½ 1 adÃ½m artÃ½r/azalt*/
      generatePwm (nextF, dutyC);
      delay (DELAY_VALUE); /*... ms bekle */
     }
   return (nextF -= delta);
  } 
 
-/* PWM center frekansýnýn deðiþtirilmesi***************************************/
+/* PWM center frekansÃ½nÃ½n deÃ°iÃ¾tirilmesi***************************************/
 void generatePwm ( uint32_t nextF, uint32_t dutyC)
 {
-  /* Set the pulse value for channel 1 : Yani DC deðeri bu þekilde de ayarlanabilir */
+  /* Set the pulse value for channel 1 : Yani DC deÃ°eri bu Ã¾ekilde de ayarlanabilir */
   //sConfig.Pulse = PULSE1_VALUE;
   // if (HAL_TIM_PWM_ConfigChannel(&TimHandle, &sConfig, TIM_CHANNEL_1) != HAL_OK)
   // {/* Configuration Error */
   // Error_Handler();}
   
- /*Burada periyot ve DC deðerleri kullanýlarak*/
- /* PWM üretimi için ilgili registerler yüklenecek. Hata durumu için */
- /* lib. fonksiyonlarý kullanýlabilir. */
+ /*Burada periyot ve DC deÃ°erleri kullanÃ½larak*/
+ /* PWM Ã¼retimi iÃ§in ilgili registerler yÃ¼klenecek. Hata durumu iÃ§in */
+ /* lib. fonksiyonlarÃ½ kullanÃ½labilir. */
   uint32_t *ptrToReg;
   BSP_LED_Toggle(LED5);
   ptrToReg = &TIM1_ARR;
-  *ptrToReg = nextF; /* Yeni frekans deðerini ARR registerine yükle **/
+  *ptrToReg = nextF; /* Yeni frekans deÃ°erini ARR registerine yÃ¼kle **/
   ptrToReg = &TIM1_CCR1;
-  *ptrToReg = dutyC; /* Yeni duty cycle deðerini CCR1 registerine yükle **/
+  *ptrToReg = dutyC; /* Yeni duty cycle deÃ°erini CCR1 registerine yÃ¼kle **/
   ptrToReg = &TIM1_BDTR;
- /* PWM baþlatmak için MOE biti (TIM1_BDTR registeri) set edilecek*/
+ /* PWM baÃ¾latmak iÃ§in MOE biti (TIM1_BDTR registeri) set edilecek*/
   SET_BIT(*ptrToReg, 0x00008000);   /*((REG) |= (BIT))*/
 }
 
 /* Duty Cycle tesbiti**********************************************************/
 uint32_t getDutyCyle (void)
 {
- /*Bu fonksiyon DC deðerini elde edecek*/
+ /*Bu fonksiyon DC deÃ°erini elde edecek*/
   uint32_t tempDC;
   uint32_t *ptrDC;
   ptrDC = &TIM1_CCR1;
   tempDC = (*ptrDC);
-  //tempDC = ((*ptrDC)+(*ptrDC)/10); /* DC %10 artýr*/
-  if (tempDC >= 1100) { /* DC %90'dan büyük mü*/
+  //tempDC = ((*ptrDC)+(*ptrDC)/10); /* DC %10 artÃ½r*/
+  if (tempDC >= 1100) { /* DC %90'dan bÃ¼yÃ¼k mÃ¼*/
     *ptrDC = 240; /* DC %10 yap*/
   } else {
     (*ptrDC) = tempDC;
@@ -282,7 +259,7 @@ uint32_t getDutyCyle (void)
   /*msWait ms bekleyen fonksiyon*/
   // BSP_LED_On(LED5); /*LED5 yak*/
    HAL_Delay(msWait);
-  //BSP_LED_Off(LED5); /*LED5 söndür*/
+  //BSP_LED_Off(LED5); /*LED5 sÃ¶ndÃ¼r*/
 }
 /* USER CODE END 4 */
 
