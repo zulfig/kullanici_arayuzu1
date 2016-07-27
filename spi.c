@@ -37,7 +37,41 @@
 
 #include "gpio.h"
 
+
+
+
 /* USER CODE BEGIN 0 */
+/*############################################################################*/
+/* Seri iletiþim ile ilgili bütün fonksiyonlar buraya yazýlacak. Ana programda 
+belirlenen deðerler buradaki fonksiyonlar kullanýlarak 'display' edilecek.
+27.07.2016 ZG */
+
+/* Fonksiyon prototipleri:                                                    */
+
+
+
+
+
+/* Fonksiyonlar:                                                               */
+
+void displayData ( uint8_t  *ptrRakam)
+{
+
+//ptrRakam = &rakam;
+/* opData[4][8] dizisi içinde display edilecek veri bulunuyor.
+   opData[1][1]: Temperature
+   opData[1][2]: Time
+   opData[1][3]: UPower */
+ 
+// HAL_SPI_Transmit(SPI_HandleTypeDef *hspi, uint8_t *pData, uint16_t Size, uint32_t Timeout); 
+ HAL_SPI_Transmit(&hspi2, ptrRakam, 8, 1000);
+
+}
+
+
+
+
+
 
 /* USER CODE END 0 */
 

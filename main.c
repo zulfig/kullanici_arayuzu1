@@ -60,9 +60,9 @@ void Error_Handler(void);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
 /*Benim yazdýðým fonksiyonlarýn prototipleri*/
-uint32_t sweepBand (uint32_t nextF, uint32_t stp, int delta, uint32_t dutyC);
-void generatePwm (uint32_t nextF, uint32_t dutyC);
-uint32_t getDutyCyle (void);
+//uint32_t sweepBand (uint32_t nextF, uint32_t stp, int delta, uint32_t dutyC);
+//void generatePwm (uint32_t nextF, uint32_t dutyC);
+//uint32_t getDutyCyle (void);
 void delay (uint32_t msWait);
 void ZG_INT_PRI_Set(void);
 
@@ -74,7 +74,7 @@ void MENU_Function(void); /* MENU butonu iþlemleri*/
  uint32_t temp1=0,intSource = 99;
  uint32_t *ptr;
 
-/* Global static variables. They must be in non-volatile memory*/
+/* Global static variables. They must be in non-volatile memory. ZG*/
 static uint32_t opData[4][8];
 static uint32_t workingSet[4];
 uint32_t tempD[2][2];
@@ -131,7 +131,9 @@ int main(void)
   if(HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK)
   { Error_Handler();} /* Configuration Error */
   
-
+  opData[1][1] = 35;
+  ptr = &opData[1][1];
+  displayData ( &ptr );
   
   /* USER CODE END 2 */
 
@@ -139,23 +141,13 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    for (tara=0; tara <5; tara++){
-//      MENU_Function ();
-    }
-    
-    for (tara=0; tara <8; tara++){
-//      UP_Function ();
-    }
-    
-    for (tara=0; tara <15; tara++){
-//      DOWN_Function ();
+   
     }
   }
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
 
-  }
   /* USER CODE END 3 */
 
 
@@ -233,59 +225,6 @@ void ZG_INT_PRI_Set(void)
 }
 
 
-/** PWM Frekansýný Tarama fonksiyonu*******************************************/
-uint32_t sweepBand (uint32_t nextF, uint32_t stp, int delta, uint32_t dutyC)
- {
-    if (stp == 0) {
-    stp = 1;}
-    for (uint32_t i=0; i<= stp; i++){
-     nextF += delta;  /*Frekansý 1 adým artýr/azalt*/
-     generatePwm (nextF, dutyC);
-     delay (DELAY_VALUE); /*... ms bekle */
-    }
-  return (nextF -= delta);
- } 
-
-/* PWM center frekansýnýn deðiþtirilmesi***************************************/
-void generatePwm ( uint32_t nextF, uint32_t dutyC)
-{
-  /* Set the pulse value for channel 1 : Yani DC deðeri bu þekilde de ayarlanabilir */
-  //sConfig.Pulse = PULSE1_VALUE;
-  // if (HAL_TIM_PWM_ConfigChannel(&TimHandle, &sConfig, TIM_CHANNEL_1) != HAL_OK)
-  // {/* Configuration Error */
-  // Error_Handler();}
-  
- /*Burada periyot ve DC deðerleri kullanýlarak*/
- /* PWM üretimi için ilgili registerler yüklenecek. Hata durumu için */
- /* lib. fonksiyonlarý kullanýlabilir. */
-  uint32_t *ptrToReg;
-  BSP_LED_Toggle(LED5);
-  ptrToReg = &TIM1_ARR;
-  *ptrToReg = nextF; /* Yeni frekans deðerini ARR registerine yükle **/
-  ptrToReg = &TIM1_CCR1;
-  *ptrToReg = dutyC; /* Yeni duty cycle deðerini CCR1 registerine yükle **/
-  ptrToReg = &TIM1_BDTR;
- /* PWM baþlatmak için MOE biti (TIM1_BDTR registeri) set edilecek*/
-  SET_BIT(*ptrToReg, 0x00008000);   /*((REG) |= (BIT))*/
-}
-
-/* Duty Cycle tesbiti**********************************************************/
-uint32_t getDutyCyle (void)
-{
- /*Bu fonksiyon DC deðerini elde edecek*/
-  uint32_t tempDC;
-  uint32_t *ptrDC;
-  ptrDC = &TIM1_CCR1;
-  tempDC = (*ptrDC);
-  //tempDC = ((*ptrDC)+(*ptrDC)/10); /* DC %10 artýr*/
-  if (tempDC >= 1100) { /* DC %90'dan büyük mü*/
-    *ptrDC = 240; /* DC %10 yap*/
-  } else {
-    (*ptrDC) = tempDC;
-  }
-  return (*ptrDC);
-}
-/******************************************************************************/
 
  void delay (uint32_t msWait)
  {
