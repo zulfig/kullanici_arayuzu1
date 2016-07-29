@@ -60,18 +60,12 @@ void Error_Handler(void);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
 /*Benim yazdýðým fonksiyonlarýn prototipleri*/
-//uint32_t sweepBand (uint32_t nextF, uint32_t stp, int delta, uint32_t dutyC);
-//void generatePwm (uint32_t nextF, uint32_t dutyC);
-//uint32_t getDutyCyle (void);
+uint32_t sweepBand (uint32_t nextF, uint32_t stp, int delta, uint32_t dutyC);
+void generatePwm (uint32_t nextF, uint32_t dutyC);
+uint32_t getDutyCyle (void);
 void delay (uint32_t msWait);
 void ZG_INT_PRI_Set(void);
-void Hex2Decimal(uint8_t num);
-void convertHexToSegment(void);
-void seriPortaYaz (uint8_t *ptrDizi, uint8_t rakamSayisi);
 
-//extern void sendRakamSeri ( uint8_t  *ptrRakam);
-extern void seriPortaYaz (uint8_t *ptrDizi, uint8_t rakamSayisi);
-extern void outDisplayData ( uint8_t rakamHane);
 void MENU_Function(void); /* MENU butonu iþlemleri*/
 /* USER CODE END PFP */
 
@@ -80,32 +74,11 @@ void MENU_Function(void); /* MENU butonu iþlemleri*/
  uint32_t temp1=0,intSource = 99;
  uint32_t *ptr;
 
-/* Global static variables. They must be in non-volatile memory. ZG           */
-static uint8_t  opData[4][26];  /* Cihazýn çalýþma parametrelerini tutar       */
-uint8_t  workingSet[4]; /* Cihaz çalýþýrken geçici olarak param. tutar */
-uint8_t  sonucRakam[10];/*Display edilecek HEX rakamlarýn BCD karþýlýðý*/
-
-const uint8_t defaultTemp   = 34;
-const uint8_t defaultTime   = 2;
-const uint8_t defaultUpower = 85;
-/*7-SEG karþýlýðý Active Hi*/
-/*uint8_t  ledSegment [30]={0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07,0x7F,0x6F,
-                          0x80,0x00,0x74,0x8B,0x74,0x8B,0x74,0x8B,0x74,0x8B,
-                          0x74,0x8B,0x74,0x8B,0x74,0x8B,0x74,0x8B,0x74,0x8B};*/
-/*7-SEG karþýlýðý Active Low*/
-uint8_t  ledSegment [30]={0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0x80,0x90,
-                          0x7F,0XFF,0x33,0x55,0xCC,0xAA,0x33,0x55,0xCC,0xAA,
-                          0x33,0x55,0xCC,0xAA,0x33,0x55,0xCC,0xAA,0x74,0x8B};
-
-uint8_t opData[4][26] = {
-     {10,12,14,16,18,20,22,24,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B},   /*  row indexed by 0 */
-     {30,31,32,33,20,95,1,0x86,0x8B,0x86},     /*  row indexed by 1 */
-     {1,2,3,4,1,99,1,125,0x86,0x8B},      /*  row indexed by 2 */
-     {50,50,60,65,20,85,5,0x86,0x8B}        /*  row indexed by 3 */
-   };
+/* Global static variables. They must be in non-volatile memory*/
+static uint32_t opData[4][8];
+static uint32_t workingSet[4];
+uint32_t tempD[2][2];
 /* USER CODE END 0 */
-
-
 
 int main(void)
 {
@@ -113,11 +86,7 @@ int main(void)
   /* USER CODE BEGIN 1 */
   int32_t  tara=0;
   uint32_t temp=0;
-  
-  uint8_t  haneSayisi = 2;
-  
   uint32_t *ptrToRegGenel, *pR, *ptr;
-  uint8_t  *ptrChar, rakamBcd, temp8;
   uint32_t step[21]={1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,10};
   uint32_t numberOfSteps=1;
   uint32_t centerFr = PERIOD_VALUE;/*Tarama merkez frekansý. 1200 için 40kHz*/
@@ -126,7 +95,6 @@ int main(void)
   uint32_t dutyCycleSet = PULSE1_VALUE; /* DC için baþlangýç deðeri*/
   /* USER CODE END 1 */
 
-  
   /* MCU Configuration----------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -140,10 +108,10 @@ int main(void)
   MX_TIM1_Init();
   MX_SPI2_Init();
   
-   
-  /* USER CODE BEGIN 2 */
   ZG_INT_PRI_Set(); /* Interrupt seviyelerini ayarla*/
-  /* Disable interrupts for channel 2,3,4 and DMA*/
+  
+  /* USER CODE BEGIN 2 */
+   /* Disable interrupts for channel 2,3,4 and DMA*/
   ptr = &TIM1_DIER;
   *ptr &= (0x000000C3);
  
@@ -157,117 +125,37 @@ int main(void)
   BSP_LED_Init(LED4); 
   BSP_LED_Init(LED5);
   BSP_LED_Init(LED6);
-    
+  BSP_LED_Off(LED3) ; /*LED3 söndür*/
+   
   /* Start PWM signal generation on TIM1_Channel 1 */ 
   if(HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK)
   { Error_Handler();} /* Configuration Error */
- 
   
-  /** deneme alaný ??????????????????????????????????????????????????????????*/
-  
-  /* Hex sayýlarýn Ondalýk karþýlýðý sonucRakam dizisinin 0 ve 1. hücresinde*/
-  /* Bu sayýlarýn 7-segment karþýlýðý ise ledSegment dizisinden alýnacak    */
 
-  convertHexToSegment(); /* Tabloya (opData) 7-seg verilerini yaz*/
   
- 
-  /* Infinite loop */
- /* USER CODE BEGIN WHILE */ 
- while (1)
- { 
- /* opData dizisini sýrayla display eden kýsým*/ 
-  uint8_t satir  = 0;
-  uint8_t sutun  = 10;
-  uint8_t rakkam = 0;
-  uint8_t indis  = 0, *ptrDizi;
-    
-  while (satir < 4)
-   {
-    while (sutun < 26)
-    {
-      ptrDizi = &opData[satir][sutun];/*Göstergeyi display alanýna ayarla*/
-      seriPortaYaz (ptrDizi, 2);
-      sutun += 2;
-    }
-     satir++;
-     sutun = 10;
-   }
-/** deneme alaný ??????????????????????????????????????????????????????????*/
-
   /* USER CODE END 2 */
- }
-}
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+    for (tara=0; tara <5; tara++){
+//      MENU_Function ();
+    }
+    
+    for (tara=0; tara <8; tara++){
+//      UP_Function ();
+    }
+    
+    for (tara=0; tara <15; tara++){
+//      DOWN_Function ();
+    }
+  }
   /* USER CODE END WHILE */
-
-
 
   /* USER CODE BEGIN 3 */
 
-
-
-/**ZG
-   * @brief Display edilecek verileri içeren opData[][] dizisine 7-Seg led dönüþümünü
-   * yapan fonksiyon
-   * @param file: yok
-   * @param line: -
-   * @retval None : 7-seg verisine dönüþüm opData içinde yapýlacaðý için 
-   */
-void convertHexToSegment(void)
-{
-  /* opData[4][25] boyutundaki dizide yer alan ve 7-SEG led displaya gönderilecek*/
-  /* verileri ilgili hücrelere yazar. Bu fonksiyon çaðýrýldýðýnda                */
-  /* opData dizisinin içeriði yüklenmiþ olduðu varsayýlacak ve 100 deðerinden    */
-  /* küçük olan sayýlar dönüþüme tabi tututalacaktýr.                            */
-  /* Kapsam: opData dizisinin 1., 2. ve 3. satýrlarý ve 0. ile 7. sütunlarý      */
-
-  uint8_t satir  = 3;
-  uint8_t sutun  = 8;
-  uint8_t rakkam = 0;
-  uint8_t indis  = 0;
-
-   while (satir > 0)
-   {
-    while (sutun > 0)
-    {
-      rakkam = opData[satir][sutun-1];
-      if (rakkam < 100)
-      {
-       Hex2Decimal(rakkam); /* Hex sayýyý Ondalýka çevir ve sonucRakam dizisine yaz*/
-       indis = opData[0][sutun-1]; /* 7-SEG bilgisinin yazýlacaðý hücre adresi     */
-       opData [satir][indis]   = ledSegment[sonucRakam [1]]; /*7-SEG 10lar hanesi */
-       opData [satir][indis+1] = ledSegment[sonucRakam [0]]; /*7-SEG 1ler hanesi  */
-      }
-      else
-      {
-        opData[indis][sutun-1]   = 0xFF; /* Boþluk (Blank)*/
-        opData[indis+1][sutun-1] = 0xFF; 
-      }
-      sutun--;
-     }
-     satir--;
-     sutun = 8;
-   }
-}
-
-
-/* 8-bit Hex sayýyý 8-bit Bcd sayýya dönüþtüren fonksiyon*/
-/* LSB dizinin [0]. elemanýnda */
-void Hex2Decimal(uint8_t num)
-{
-  uint8_t i = 0;
-  /*Test if num < 10*/
-  if (num < 10)
-  {
-   sonucRakam[1] = 0;
   }
-  while(num > 0)
-  {
-   sonucRakam[i] = num % 10;
-   num /= 10;
-   i = i + 1;
-  }
-}
-
   /* USER CODE END 3 */
 
 
@@ -339,12 +227,65 @@ void PULSE_Fonksiyonu (void)
 
 void ZG_INT_PRI_Set(void)
 {
-  NVIC_SetPriority(IRQn01, INT_PRIORITY_3);
+  NVIC_SetPriority(IRQn01, INT_PRIORITY_0);
   NVIC_SetPriority(IRQn23, INT_PRIORITY_0);
-  NVIC_SetPriority(IRQn415, INT_PRIORITY_2);
+  NVIC_SetPriority(IRQn415, INT_PRIORITY_0);
 }
 
 
+/** PWM Frekansýný Tarama fonksiyonu*******************************************/
+uint32_t sweepBand (uint32_t nextF, uint32_t stp, int delta, uint32_t dutyC)
+ {
+    if (stp == 0) {
+    stp = 1;}
+    for (uint32_t i=0; i<= stp; i++){
+     nextF += delta;  /*Frekansý 1 adým artýr/azalt*/
+     generatePwm (nextF, dutyC);
+     delay (DELAY_VALUE); /*... ms bekle */
+    }
+  return (nextF -= delta);
+ } 
+
+/* PWM center frekansýnýn deðiþtirilmesi***************************************/
+void generatePwm ( uint32_t nextF, uint32_t dutyC)
+{
+  /* Set the pulse value for channel 1 : Yani DC deðeri bu þekilde de ayarlanabilir */
+  //sConfig.Pulse = PULSE1_VALUE;
+  // if (HAL_TIM_PWM_ConfigChannel(&TimHandle, &sConfig, TIM_CHANNEL_1) != HAL_OK)
+  // {/* Configuration Error */
+  // Error_Handler();}
+  
+ /*Burada periyot ve DC deðerleri kullanýlarak*/
+ /* PWM üretimi için ilgili registerler yüklenecek. Hata durumu için */
+ /* lib. fonksiyonlarý kullanýlabilir. */
+  uint32_t *ptrToReg;
+  BSP_LED_Toggle(LED5);
+  ptrToReg = &TIM1_ARR;
+  *ptrToReg = nextF; /* Yeni frekans deðerini ARR registerine yükle **/
+  ptrToReg = &TIM1_CCR1;
+  *ptrToReg = dutyC; /* Yeni duty cycle deðerini CCR1 registerine yükle **/
+  ptrToReg = &TIM1_BDTR;
+ /* PWM baþlatmak için MOE biti (TIM1_BDTR registeri) set edilecek*/
+  SET_BIT(*ptrToReg, 0x00008000);   /*((REG) |= (BIT))*/
+}
+
+/* Duty Cycle tesbiti**********************************************************/
+uint32_t getDutyCyle (void)
+{
+ /*Bu fonksiyon DC deðerini elde edecek*/
+  uint32_t tempDC;
+  uint32_t *ptrDC;
+  ptrDC = &TIM1_CCR1;
+  tempDC = (*ptrDC);
+  //tempDC = ((*ptrDC)+(*ptrDC)/10); /* DC %10 artýr*/
+  if (tempDC >= 1100) { /* DC %90'dan büyük mü*/
+    *ptrDC = 240; /* DC %10 yap*/
+  } else {
+    (*ptrDC) = tempDC;
+  }
+  return (*ptrDC);
+}
+/******************************************************************************/
 
  void delay (uint32_t msWait)
  {

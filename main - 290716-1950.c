@@ -98,10 +98,10 @@ uint8_t  ledSegment [30]={0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0x80,0x90,
                           0x33,0x55,0xCC,0xAA,0x33,0x55,0xCC,0xAA,0x74,0x8B};
 
 uint8_t opData[4][26] = {
-     {10,12,14,16,18,20,22,24,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B},   /*  row indexed by 0 */
-     {30,31,32,33,20,95,1,0x86,0x8B,0x86},     /*  row indexed by 1 */
-     {1,2,3,4,1,99,1,125,0x86,0x8B},      /*  row indexed by 2 */
-     {50,50,60,65,20,85,5,0x86,0x8B}        /*  row indexed by 3 */
+     {10,12,14,16,18,20,22,24},   /*  row indexed by 0 */
+     {30,31,32,33,20,95,1,0},     /*  row indexed by 1 */
+     {1,2,3,4,1,99,1,0,125},      /*  row indexed by 2 */
+     {50,50,60,65,20,85,5}        /*  row indexed by 3 */
    };
 /* USER CODE END 0 */
 
@@ -186,8 +186,8 @@ int main(void)
     while (sutun < 26)
     {
       ptrDizi = &opData[satir][sutun];/*Göstergeyi display alanýna ayarla*/
-      seriPortaYaz (ptrDizi, 2);
-      sutun += 2;
+      seriPortaYaz (ptrDizi, 1);
+      sutun++;
     }
      satir++;
      sutun = 10;
@@ -234,8 +234,8 @@ void convertHexToSegment(void)
       {
        Hex2Decimal(rakkam); /* Hex sayýyý Ondalýka çevir ve sonucRakam dizisine yaz*/
        indis = opData[0][sutun-1]; /* 7-SEG bilgisinin yazýlacaðý hücre adresi     */
-       opData [satir][indis]   = ledSegment[sonucRakam [1]]; /*7-SEG 10lar hanesi */
-       opData [satir][indis+1] = ledSegment[sonucRakam [0]]; /*7-SEG 1ler hanesi  */
+       opData [satir][indis]   = ledSegment[sonucRakam [0]]; /*7-SEG 10lar hanesi */
+       opData [satir][indis+1] = ledSegment[sonucRakam [1]]; /*7-SEG 1ler hanesi  */
       }
       else
       {

@@ -4,54 +4,70 @@
   * Description        : This file provides code for the configuration
   *                      of all used GPIO pins.
   ******************************************************************************
-  *
   * COPYRIGHT(c) 2016 STMicroelectronics
-  *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  *
   ******************************************************************************
   */
 
 /* Includes ------------------------------------------------------------------*/
 #include "gpio.h"
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
 
 /*----------------------------------------------------------------------------*/
 /* Configure GPIO                                                             */
 /*----------------------------------------------------------------------------*/
-/* USER CODE BEGIN 1 */
 
+
+/* USER CODE BEGIN 1 */
+/*############################################################################*/
+/* GPIO iþlerini buradan yapacaðýz                                            */
+/* Displayi sürmek için PC0 ve PC1 pinlerinden display modülüne STCP sinyali  */
+/* verilecek*/    
+ 
+  void outDisplayData ( uint8_t rakamHane)
+  {
+   uint8_t pinNo;
+   /* 6 adet 7-seg display sürebilecek bir fonksiyon*/
+   switch(rakamHane) {
+      case 0 :
+         pinNo = GPIO_PIN_0; /* PC0 portundan STCP sinyali*/
+         break;
+     case 1 :
+         pinNo = GPIO_PIN_4; /* PC4 portundan STCP sinyali*/
+         break;
+/*     case 2 :
+         pinNo = GPIO_PIN_2;
+         break;
+     case 3 :
+         pinNo = GPIO_PIN_3;
+         break;    
+     case 4 :
+         pinNo = GPIO_PIN_4;
+         break;    
+     case 5 :
+         pinNo = GPIO_PIN_5;
+         break;    
+*/
+         
+      default :
+         /* Geçersiz pin numarasý gönderilmiþ; Hata mesajý verilebilir */
+         pinNo = GPIO_PIN_0;
+   }
+    
+//void HAL_GPIO_WritePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinState)
+/*  Ýlgili 7-seg display için latch sinyalini yükselen kenar olarak gönder    */
+    HAL_GPIO_WritePin (GPIOC, pinNo, GPIO_PIN_RESET);
+    delay(1);
+    HAL_GPIO_WritePin (GPIOC, pinNo, GPIO_PIN_SET);
+    delay(1);
+    HAL_GPIO_WritePin (GPIOC, pinNo, GPIO_PIN_RESET);
+  }
+
+/*############################################################################*/    
 /* USER CODE END 1 */
 
-/** Configure pins as 
-        * Analog 
-        * Input 
-        * Output
-        * EVENT_OUT
-        * EXTI
-*/
+
+
+/** Configure pins  */
+
 void MX_GPIO_Init(void)
 {
 
@@ -64,16 +80,16 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, SERIAL_CHIPSELECT_0_Pin|SERIAL_CHIPSELECT_1_Pin|EXT_RESET_Pin|LD3_Pin 
-                          |LD6_Pin|LD4_Pin|LD5_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, SERIAL_CHIPSELECT_0_Pin|SERIAL_CHIPSELECT_2_Pin
+                           |EXT_RESET_Pin|LD3_Pin |LD6_Pin|LD4_Pin|LD5_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(SERIAL_CHIPSELECT_2_GPIO_Port, SERIAL_CHIPSELECT_2_Pin, GPIO_PIN_SET);
+//  HAL_GPIO_WritePin(SERIAL_CHIPSELECT_2_GPIO_Port, SERIAL_CHIPSELECT_2_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : PCPin PCPin PCPin PCPin 
                            PCPin PCPin PCPin */
-  GPIO_InitStruct.Pin = SERIAL_CHIPSELECT_0_Pin|SERIAL_CHIPSELECT_1_Pin|EXT_RESET_Pin|LD3_Pin 
-                          |LD6_Pin|LD4_Pin|LD5_Pin;
+  GPIO_InitStruct.Pin = SERIAL_CHIPSELECT_0_Pin|SERIAL_CHIPSELECT_2_Pin
+                        |EXT_RESET_Pin|LD3_Pin |LD6_Pin|LD4_Pin|LD5_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -87,12 +103,12 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PtPin */
+  /*Configure GPIO pin : PtPin 
   GPIO_InitStruct.Pin = SERIAL_CHIPSELECT_2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(SERIAL_CHIPSELECT_2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(SERIAL_CHIPSELECT_2_GPIO_Port, &GPIO_InitStruct); */
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_1_IRQn, 0, 0);
@@ -105,17 +121,5 @@ void MX_GPIO_Init(void)
   HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 
 }
-
-/* USER CODE BEGIN 2 */
-
-/* USER CODE END 2 */
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

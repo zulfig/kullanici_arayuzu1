@@ -47,28 +47,39 @@ belirlenen deðerler buradaki fonksiyonlar kullanýlarak 'display' edilecek.
 27.07.2016 ZG */
 
 /* Fonksiyon prototipleri:                                                    */
-
-
+void seriPortaYaz (uint8_t *ptrDizi, uint8_t rakamSayisi);
 
 
 
 /* Fonksiyonlar:                                                               */
 
-void displayData ( uint8_t  *ptrRakam)
-{
 
-//ptrRakam = &rakam;
 /* opData[4][8] dizisi içinde display edilecek veri bulunuyor.
    opData[1][1]: Temperature
-   opData[1][2]: Time
-   opData[1][3]: UPower */
+   opData[2][1]: Time
+   opData[3][1]: UPower */
  
-// HAL_SPI_Transmit(SPI_HandleTypeDef *hspi, uint8_t *pData, uint16_t Size, uint32_t Timeout); 
- HAL_SPI_Transmit(&hspi2, ptrRakam, 8, 1000);
+// HAL_SPI_Transmit(SPI_HandleTypeDef *hspi, uint8_t *pData, uint16_t Size, uint32_t Timeout);
+/* Bu fonksiyon ile 8-bit veri (*ptrRakam) SPI2_OUTPUT (MOSI) portundan     */
+/* CLK sinyali ile birlikte baðlanan birime (7-SEG Display) gönderilir.*/
 
-}
+void seriPortaYaz (uint8_t *ptrDizi, uint8_t rakamSayisi)
+{
+ while (rakamSayisi > 0)
+   {
+    HAL_SPI_Transmit(&hspi2, ptrDizi, 1, 1);/*Rakamý display Shift Reg.e yükle*/
+    outDisplayData (rakamSayisi-1);    /* Ýlgili haneye yazdýr           */
+    rakamSayisi--;                     /* Hane sayýsýný azalt ve devam et*/
+    ptrDizi++;                         /* Göstergeyi ilerlet */
+   }
+  delay(500); 
+  rakamSayisi--;
+ }
 
 
+
+
+/*############################################################################*/
 
 
 
@@ -88,7 +99,7 @@ void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -117,7 +128,8 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
     /**SPI2 GPIO Configuration    
     PC2     ------> SPI2_MISO
     PC3     ------> SPI2_MOSI
-    PB10     ------> SPI2_SCK 
+  //  PB10     ------> SPI2_SCK 
+    PB13     ------> SPI2_SCK :Deðiþtirdim. Sanki problem oluyordu
     */
     GPIO_InitStruct.Pin = SERIAL_INPUT_Pin|SERIAL_OUTPUT_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -126,12 +138,13 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
     GPIO_InitStruct.Alternate = GPIO_AF1_SPI2;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = SERIAL_CLOCK_Pin;
+//    GPIO_InitStruct.Pin = SERIAL_CLOCK_Pin;
+    GPIO_InitStruct.Pin = GPIO_PIN_13; /*SERIAL_CLOCK_GPIO_Pin yerine */
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
-    HAL_GPIO_Init(SERIAL_CLOCK_GPIO_Port, &GPIO_InitStruct);
+    GPIO_InitStruct.Alternate = GPIO_AF0_SPI2; /* AF5 yerine AF0*/
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN SPI2_MspInit 1 */
 
@@ -153,11 +166,12 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* spiHandle)
     /**SPI2 GPIO Configuration    
     PC2     ------> SPI2_MISO
     PC3     ------> SPI2_MOSI
-    PB10     ------> SPI2_SCK 
+    //PB10     ------> SPI2_SCK 
+    PB13     ------> SPI2_SCK :Deðiþtirdim. 10 Problem oluyordu
     */
     HAL_GPIO_DeInit(GPIOC, SERIAL_INPUT_Pin|SERIAL_OUTPUT_Pin);
 
-    HAL_GPIO_DeInit(SERIAL_CLOCK_GPIO_Port, SERIAL_CLOCK_Pin);
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_13); /*GPIOB yazýldý*/
 
   }
   /* USER CODE BEGIN SPI2_MspDeInit 1 */

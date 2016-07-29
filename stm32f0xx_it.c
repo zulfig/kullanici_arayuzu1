@@ -14,9 +14,7 @@
 
 /* USER CODE BEGIN 0 */
 #include "stm32f072b_discovery.h"
-#include "registersNVIC.h"     /* NVIC  Register adresleri*/
 #include "registersEXTI.h"     /* EXTI  Register adresleri*/
-#include "registersGPIOA.h"    /* GPIOA Register adresleri*/
 #include "pendingBitsEXTI.h"   /* EXTIn lines için pending bitleri:PendingBitn*/
     
 #define  IRQn01              5  /* EXTI0_1 line için IRQ numarasý*/
@@ -94,15 +92,15 @@ void EXTI0_1_IRQHandler(void)
   (EXTI_IMR)&= (0xFFFFFFC0);   /* Mask EXTI0-5 interrupts (disable)*******/
  
  /* Hangi tuþa basýldýðýnýn tespit edilmesi. EXTI_PR registerýndan oku */
-  intLine = (EXTI_PR) &(0x00000001); /* EXTI0 biti al = EXTI0_1_IRQn 0*/
+  intLine = (EXTI_PR) &(PendingBit0); /* EXTI0 biti al = EXTI0_1_IRQn 0*/
   if (intLine) 
-  {/* IRQ 0 set; yani EXTI0'dan int. gelmiþ = MENU tuþuna basýlmýþ *********/
+  {/* IRQ 0 set; yani EXTI0'dan int. gelmiþ = RESERVED tuþuna basýlmýþ *********/
     BSP_LED_Toggle(LED6);
-//    MENU_Fonksiyonu ();
+//    RESERVED_Fonksiyonu (); /* Þimdilik bu tuþu kullanmayacaðýz*/
   } 
   else
   { 
-    intLine = (EXTI_PR) &(0x00000002); /* EXTI1 biti al = EXTI0_1_IRQn 1*/
+    intLine = (EXTI_PR) &(PendingBit1); /* EXTI1 biti al = EXTI0_1_IRQn 1*/
      if (intLine)
      { /* IRQ 1 set; yani EXTI1'den int. gelmiþ = UP tuþuna basýlmýþ *********/
        BSP_LED_Toggle(LED5);
@@ -115,11 +113,11 @@ void EXTI0_1_IRQHandler(void)
   NVIC_EnableIRQ(IRQn415);
   NVIC_ClearPendingIRQ(IRQn01); /* NVIC ICPR reg. clear bit IRQ0_1   */
   (EXTI_IMR) |= (0x0000003F);   /* Unmask EXTI0-5 interrupts (enable)*******/
-  (EXTI_PR) |= (0x000000FF);    /* Clear Pending bit in EXTI_PR register */
+  (EXTI_PR)  |= (0x000000FF);    /* Clear Pending bit in EXTI_PR register */
   
   /* IRQn 1 set edip deneme yapalým */
-  (EXTI_SWIER) |= (0x00000008); 
-  (EXTI_SWIER) |= (0x00000010);
+//  (EXTI_SWIER) |= (0x00000008); 
+//  (EXTI_SWIER) |= (0x00000010);
   
   /* USER CODE END EXTI0_1_IRQn 0 */
 }
@@ -142,7 +140,7 @@ void EXTI2_3_IRQHandler(void)
   (EXTI_IMR)&= (0xFFFFFFC0);   /* Mask EXTI0-5 interrupts (disable)*******/
  
  /* Hangi tuþa basýldýðýnýn tespit edilmesi. EXTI_PR registerýndan oku */
-  intLine = (EXTI_PR) &(0x00000004); /* EXTI2 biti al = EXTI0_1_IRQn 2 */
+  intLine = (EXTI_PR) &(PendingBit2); /* EXTI2 biti al = EXTI0_1_IRQn 2 */
   if (intLine) 
   {/* IRQ 2 set; yani EXTI2'den int. gelmiþ = DOWN tuþuna basýlmýþ *********/
     BSP_LED_Toggle(LED4);
@@ -150,11 +148,11 @@ void EXTI2_3_IRQHandler(void)
   } 
   else
   { 
-    intLine = (EXTI_PR) &(0x00000008); /* EXTI3 biti al = EXTI0_1_IRQn 3 */
+    intLine = (EXTI_PR) &(PendingBit3); /* EXTI3 biti al = EXTI0_1_IRQn 3 */
      if (intLine)
-     { /* IRQ 3 set; yani EXTI3'den int. gelmiþ = RESERVED tuþuna basýlmýþ *********/
+     { /* IRQ 3 set; yani EXTI3'den int. gelmiþ = MENU tuþuna basýlmýþ *********/
        BSP_LED_Toggle(LED5);
-//       RESERVED_Fonksiyonu ();
+//       MENU_Fonksiyonu ();
      }
   }
   /* Çýkmadan önce interruptlarý tekrar enable et; pending bitleri clear*****/
@@ -163,7 +161,7 @@ void EXTI2_3_IRQHandler(void)
   NVIC_EnableIRQ(IRQn415);
   NVIC_ClearPendingIRQ(IRQn01); /* NVIC ICPR reg. clear bit IRQ0_1   */
   (EXTI_IMR) |= (0x0000003F);   /* Unmask EXTI0-5 interrupts (enable)*******/
-  (EXTI_PR) |= (0x000000FF);    /* Clear Pending bit in EXTI_PR register */
+  (EXTI_PR)  |= (0x000000FF);    /* Clear Pending bit in EXTI_PR register */
   
   /* USER CODE END EXTI2_3_IRQn 0 */
 }
@@ -186,7 +184,7 @@ void EXTI4_15_IRQHandler(void)
   (EXTI_IMR)&= (0xFFFFFFC0);   /* Mask EXTI0-5 interrupts (disable)*******/
  
  /* Hangi tuþa basýldýðýnýn tespit edilmesi. EXTI_PR registerýndan oku */
-  intLine = (EXTI_PR) &(0x00000010); /* EXTI4 biti al = EXTI0_1_IRQn 4 */
+  intLine = (EXTI_PR) &(PendingBit4); /* EXTI4 biti al = EXTI0_1_IRQn 4 */
   if (intLine) 
   {/* IRQ 4 set; yani EXTI4'den int. gelmiþ = DEGAS tuþuna basýlmýþ *********/
     BSP_LED_Toggle(LED4);
@@ -194,7 +192,7 @@ void EXTI4_15_IRQHandler(void)
   } 
   else
   { 
-    intLine = (EXTI_PR) &(0x00000020); /* EXTI5 biti al = EXTI0_1_IRQn 5 */
+    intLine = (EXTI_PR) &(PendingBit5); /* EXTI5 biti al = EXTI0_1_IRQn 5 */
      if (intLine)
      { /* IRQ 5 set; yani EXTI5'den int. gelmiþ = PULSE tuþuna basýlmýþ *********/
        BSP_LED_Toggle(LED5);
@@ -207,7 +205,7 @@ void EXTI4_15_IRQHandler(void)
   NVIC_EnableIRQ(IRQn415);
   NVIC_ClearPendingIRQ(IRQn01); /* NVIC ICPR reg. clear bit IRQ0_1   */
   (EXTI_IMR) |= (0x0000003F);   /* Unmask EXTI0-5 interrupts (enable)*******/
-  (EXTI_PR) |= (0x000000FF);    /* Clear Pending bit in EXTI_PR register */
+  (EXTI_PR)  |= (0x000000FF);    /* Clear Pending bit in EXTI_PR register */
   
   /* USER CODE END EXTI4_15_IRQn 0 */
 }
