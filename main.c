@@ -24,23 +24,27 @@
 #include "registersGPIOA.h"            /* GPIOA Register adresleri*/
 #include "pendingBitsEXTI.h"           /* EXTIn lines için pending bitleri:PendingBitn*/
 
-#define  PERIOD_VALUE       (1200 - 1)  /* Period Value:40kHz için 1200  */
-#define  PULSE1_VALUE_MAX   540         /* Maximum Capture Compare Value:%45 dutyCycle */
-#define  PULSE1_VALUE       240         /* Baþlangýç dutyCycle deðeri*/
-#define  DEAD_TIME          0x30        /* Complementary PWM ölü zamaný = 1u0s*/ 
+//#define  PERIOD_VALUE       (1200 - 1)  /* Period Value:40kHz için 1200  */
+//#define  PULSE1_VALUE_MAX   540         /* Maximum Capture Compare Value:%45 dutyCycle */
+//#define  PULSE1_VALUE       240         /* Baþlangýç dutyCycle deðeri*/
+//#define  DEAD_TIME          0x30        /* Complementary PWM ölü zamaný = 1u0s*/ 
 
+#define  PERIOD_VALUE       (1734 - 1)  /* Period Value:27.685kHz için 1734  */
+#define  PULSE1_VALUE_MAX   780         /* Maximum Capture Compare Value:%45 dutyCycle */
+#define  PULSE1_VALUE       350         /* Baþlangýç dutyCycle deðeri*/
+   
 #define  DELAY_VALUE         10   /* Delay Value default 100 ms  */
-#define  DELTA_FRQ           3    /* Frekans tarama adýmlarý; 3=100 Hz(Clk:48Mhz)*/
+#define  DELTA_FRQ           6    /* Frekans tarama adýmlarý; 6=96 Hz(Clk:48Mhz)*/
 #define  SWEEP_RANGE         20   /* Taramanýn kaç adýmda yapýlacaðý:1-20 adým  */
 
 #define  IRQn01              5    /* EXTI0_1 line için IRQ numarasý*/
 #define  IRQn23              6    /* EXTI2_3 line için IRQ numarasý*/
 #define  IRQn415             7    /* EXTI4_15 line için IRQ numarasý*/
 
-#define  INT_PRIORITY_0      0x00  /* Interrupt priority : 0   */
-#define  INT_PRIORITY_1      0x40  /* Interrupt priority : 64  */
-#define  INT_PRIORITY_2      0x80  /* Interrupt priority : 128 */
-#define  INT_PRIORITY_3      0xC0  /* Interrupt priority : 192 */
+#define  INT_PRIORITY_0      0x00  /* Interrupt priority : 0 (Highest)  */
+#define  INT_PRIORITY_1      0x40  /* Interrupt priority : 64           */
+#define  INT_PRIORITY_2      0x80  /* Interrupt priority : 128          */
+#define  INT_PRIORITY_3      0xC0  /* Interrupt priority : 192 (Lowest) */
 
 
 /* USER CODE END Includes */
@@ -63,14 +67,13 @@ void Error_Handler(void);
 //uint32_t sweepBand (uint32_t nextF, uint32_t stp, int delta, uint32_t dutyC);
 //void generatePwm (uint32_t nextF, uint32_t dutyC);
 //uint32_t getDutyCyle (void);
+extern void stopPwm (void);
 void delay (uint32_t msWait);
 void ZG_INT_PRI_Set(void);
 void Hex2Decimal(uint8_t num);
-void convertHexToSegment(void);
-void seriPortaYaz (uint8_t *ptrDizi, uint8_t rakamSayisi);
+void convertHexToSegment(void); /*opData dizisine 7seg verilerini yazar*/
 
-//extern void sendRakamSeri ( uint8_t  *ptrRakam);
-extern void seriPortaYaz (uint8_t *ptrDizi, uint8_t rakamSayisi);
+extern uint32_t seriPortaYaz (uint8_t *ptrDizi, uint8_t rakamSayisi);
 extern void outDisplayData ( uint8_t rakamHane);
 void MENU_Function(void); /* MENU butonu iþlemleri*/
 /* USER CODE END PFP */
@@ -79,30 +82,26 @@ void MENU_Function(void); /* MENU butonu iþlemleri*/
 /* Global variables */
  uint32_t temp1=0,intSource = 99;
  uint32_t *ptr;
+ uint8_t  workingSet[4]; /* Cihaz çalýþýrken geçici olarak param. tutar */
+ uint8_t  sonucRakam[10];/*Display edilecek HEX rakamlarýn BCD karþýlýðý*/
+ uint32_t sysTickBasla; /* Zaman hesaplama için kullanýlabilir. SysTick 1 ms*/
 
 /* Global static variables. They must be in non-volatile memory. ZG           */
-static uint8_t  opData[4][26];  /* Cihazýn çalýþma parametrelerini tutar       */
-uint8_t  workingSet[4]; /* Cihaz çalýþýrken geçici olarak param. tutar */
-uint8_t  sonucRakam[10];/*Display edilecek HEX rakamlarýn BCD karþýlýðý*/
+static uint8_t  opData[4][26];  /* Cihazýn çalýþma parametrelerini tutar      */
 
-const uint8_t defaultTemp   = 34;
-const uint8_t defaultTime   = 2;
-const uint8_t defaultUpower = 85;
-/*7-SEG karþýlýðý Active Hi*/
-/*uint8_t  ledSegment [30]={0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07,0x7F,0x6F,
-                          0x80,0x00,0x74,0x8B,0x74,0x8B,0x74,0x8B,0x74,0x8B,
-                          0x74,0x8B,0x74,0x8B,0x74,0x8B,0x74,0x8B,0x74,0x8B};*/
-/*7-SEG karþýlýðý Active Low*/
-uint8_t  ledSegment [30]={0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0x80,0x90,
-                          0x7F,0XFF,0x33,0x55,0xCC,0xAA,0x33,0x55,0xCC,0xAA,
-                          0x33,0x55,0xCC,0xAA,0x33,0x55,0xCC,0xAA,0x74,0x8B};
 
-uint8_t opData[4][26] = {
-     {10,12,14,16,18,20,22,24,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B,0x86,0x8B},   /*  row indexed by 0 */
-     {30,31,32,33,20,95,1,0x86,0x8B,0x86},     /*  row indexed by 1 */
-     {1,2,3,4,1,99,1,125,0x86,0x8B},      /*  row indexed by 2 */
-     {50,50,60,65,20,85,5,0x86,0x8B}        /*  row indexed by 3 */
-   };
+static uint8_t  ledSegment [33]={0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0x80,0x90,
+                          0x7F,0XFF,0x88,0xC6,0xA1,0x83,0x84,0x86,0x8E,0x89,
+                          0x8B,0xF9,0xF1,0xC7,0xAB,0xA3,0x8C,0xA1,0xE3,0x91,
+                          0x98,0xBF,0xF7};
+
+static uint8_t opData[4][26] = {
+     {10,12,14,16,18,20,22,24,0x86,0x8B,0xBF,0x8B,0x86,0xBF,0x86,0x8B,0xBF,0x8B,
+      0x86,0xBF,0x86,0x8B,0xBF,0x8B,0x86,0xBF},   /*  row indexed by 0 */
+     {30,31,32, 33,20,95,1,0x86,0x8B,0xBF},        /*  row indexed by 1 */
+     {50,50,60, 65,20,85,5,0x86,0x8B,0x86},         /*  row indexed by 2 */
+     {1,  2, 3, 4,1,99,1,125,0x86,0x8B}              /*  row indexed by 3 */    
+};
 /* USER CODE END 0 */
 
 
@@ -114,7 +113,7 @@ int main(void)
   int32_t  tara=0;
   uint32_t temp=0;
   
-  uint8_t  haneSayisi = 2;
+  uint8_t kacHane=6, *ptrDisplayBuffer;
   
   uint32_t *ptrToRegGenel, *pR, *ptr;
   uint8_t  *ptrChar, rakamBcd, temp8;
@@ -143,10 +142,12 @@ int main(void)
    
   /* USER CODE BEGIN 2 */
   ZG_INT_PRI_Set(); /* Interrupt seviyelerini ayarla*/
+ 
   /* Disable interrupts for channel 2,3,4 and DMA*/
   ptr = &TIM1_DIER;
   *ptr &= (0x000000C3);
  
+  
   numberOfSteps = SWEEP_RANGE;/* Taramanýn kaç adýmda yapýlacaðý*/
   if ((numberOfSteps) < 0 | (numberOfSteps > 20)) { 
   Error_Handler(); /* Adým sayýsý sýnýrlarýn dýþýnda ise hata ver*/
@@ -158,45 +159,62 @@ int main(void)
   BSP_LED_Init(LED5);
   BSP_LED_Init(LED6);
     
-  /* Start PWM signal generation on TIM1_Channel 1 */ 
-  if(HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK)
-  { Error_Handler();} /* Configuration Error */
- 
   
   /** deneme alaný ??????????????????????????????????????????????????????????*/
+  sysTickBasla = HAL_GetTick();
+//  SysTick_Handler(); /*bakalým nasýl çalýþýyor*/
+  temp8 = HAL_GetTick() - sysTickBasla;
+//  opData[1][1] = temp8;
   
-  /* Hex sayýlarýn Ondalýk karþýlýðý sonucRakam dizisinin 0 ve 1. hücresinde*/
-  /* Bu sayýlarýn 7-segment karþýlýðý ise ledSegment dizisinden alýnacak    */
-
-  convertHexToSegment(); /* Tabloya (opData) 7-seg verilerini yaz*/
+  /* Hex sayýlarýn Ondalýk karþýlýðýný Hex2Decimal() fonksiyonu               */
+  /* sonucRakam[] dizisinin 0 ve 1. hücresine yazar.                          */
+  /* Bu sayýlarýn 7-segment karþýlýðý ise ledSegment[] dizisinden alýnarak    */
+  /* opData[][] dizisinin 10. sütundan sonrasýna bu fonksiyon yazar.          */
   
+  convertHexToSegment(); 
  
+
+  /*testingen*/  
+  generatePwm (PERIOD_VALUE, PULSE1_VALUE);
+
   /* Infinite loop */
  /* USER CODE BEGIN WHILE */ 
+  opData [0][10] = 0xFF;
+  opData [0][11] = 0xFF;
+  opData [0][12] = 0xFF;
+  opData [0][13] = 0xFF;
+  opData [0][14] = 0xFF;
+  opData [0][15] = 0xFF;
+  ptrDisplayBuffer = &opData [0][10];
+  temp = seriPortaYaz (ptrDisplayBuffer, 6);
+  BSP_LED_Toggle(LED6);
+  delay(1000);
+  
+  convertHexToSegment();
+  kacHane=6;
+  ptrDisplayBuffer = &opData [0][10];
+  temp = seriPortaYaz (ptrDisplayBuffer, kacHane); /*kacHane: gösterilecek 7-seg sayýsý*/
+  if (temp = 11)
+  {  
+   BSP_LED_Toggle(LED6);
+   delay(500);
+  }
+  else 
+  {
+   BSP_LED_On(LED3); /* HATA!!*/
+  }
+  
  while (1)
  { 
- /* opData dizisini sýrayla display eden kýsým*/ 
-  uint8_t satir  = 0;
-  uint8_t sutun  = 10;
-  uint8_t rakkam = 0;
-  uint8_t indis  = 0, *ptrDizi;
-    
-  while (satir < 4)
-   {
-    while (sutun < 26)
-    {
-      ptrDizi = &opData[satir][sutun];/*Göstergeyi display alanýna ayarla*/
-      seriPortaYaz (ptrDizi, 2);
-      sutun += 2;
-    }
-     satir++;
-     sutun = 10;
-   }
+ 
+  
 /** deneme alaný ??????????????????????????????????????????????????????????*/
 
+
+ }
   /* USER CODE END 2 */
  }
-}
+
   /* USER CODE END WHILE */
 
 
@@ -220,10 +238,9 @@ void convertHexToSegment(void)
   /* küçük olan sayýlar dönüþüme tabi tututalacaktýr.                            */
   /* Kapsam: opData dizisinin 1., 2. ve 3. satýrlarý ve 0. ile 7. sütunlarý      */
 
-  uint8_t satir  = 3;
-  uint8_t sutun  = 8;
-  uint8_t rakkam = 0;
-  uint8_t indis  = 0;
+  uint8_t satir  = 3, sutun  = 8;
+  uint8_t rakkam = 0, indis  = 0;
+  uint8_t *ptrDisplayBuffer, kacHane=2;/* Seri porta gönderilecek buffer adresini taþýr*/
 
    while (satir > 0)
    {
@@ -247,11 +264,24 @@ void convertHexToSegment(void)
      satir--;
      sutun = 8;
    }
+  /* Tablo dolduruldu. Þimdi display alanýna ilgili segment deðerlerini taþý  */
+  /* Bu bölüm cihazda display edilecek veriler ve diziliþlerine göre yazýlýr  */
+  /* 020816 durumu:: temp10-temp1 -- uP10-uP1 -- tim10-tim1 */
+   ptrDisplayBuffer = &opData [0][15];
+   for (satir=1; satir < 4; satir++)
+   {
+    *ptrDisplayBuffer = opData [satir][14];
+    ptrDisplayBuffer--;
+    *ptrDisplayBuffer = opData [satir][15];
+    ptrDisplayBuffer--;
+   }
+
 }
 
 
-/* 8-bit Hex sayýyý 8-bit Bcd sayýya dönüþtüren fonksiyon*/
-/* LSB dizinin [0]. elemanýnda */
+/* 8-bit HEX sayýyý 8-bit BCD sayýya dönüþtüren fonksiyon*/
+/* LSD sonucRakam[0]. elemanýnda */
+/* MSD sonucRakam[1]. elemanýnda */
 void Hex2Decimal(uint8_t num)
 {
   uint8_t i = 0;
@@ -339,6 +369,11 @@ void PULSE_Fonksiyonu (void)
 
 void ZG_INT_PRI_Set(void)
 {
+  uint32_t *ptr;
+ /* Disable interrupts and DMAs for channel 1,2,3 and 4 */
+  ptr = &TIM1_DIER;
+  *ptr &= (0x00000000);
+  
   NVIC_SetPriority(IRQn01, INT_PRIORITY_3);
   NVIC_SetPriority(IRQn23, INT_PRIORITY_0);
   NVIC_SetPriority(IRQn415, INT_PRIORITY_2);

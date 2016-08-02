@@ -63,13 +63,12 @@ void Error_Handler(void);
 //uint32_t sweepBand (uint32_t nextF, uint32_t stp, int delta, uint32_t dutyC);
 //void generatePwm (uint32_t nextF, uint32_t dutyC);
 //uint32_t getDutyCyle (void);
+extern void stopPwm (void);
 void delay (uint32_t msWait);
 void ZG_INT_PRI_Set(void);
 void Hex2Decimal(uint8_t num);
-void convertHexToSegment(void);
-void seriPortaYaz (uint8_t *ptrDizi, uint8_t rakamSayisi);
+void convertHexToSegment(void); /*opData dizisine 7seg verilerini yazar*/
 
-//extern void sendRakamSeri ( uint8_t  *ptrRakam);
 extern void seriPortaYaz (uint8_t *ptrDizi, uint8_t rakamSayisi);
 extern void outDisplayData ( uint8_t rakamHane);
 void MENU_Function(void); /* MENU butonu iþlemleri*/
@@ -79,11 +78,13 @@ void MENU_Function(void); /* MENU butonu iþlemleri*/
 /* Global variables */
  uint32_t temp1=0,intSource = 99;
  uint32_t *ptr;
+ uint8_t  workingSet[4]; /* Cihaz çalýþýrken geçici olarak param. tutar */
+ uint8_t  sonucRakam[10];/*Display edilecek HEX rakamlarýn BCD karþýlýðý*/
+ uint32_t sysTickBasla; /* Zaman hesaplama için kullanýlabilir. SysTick 1 ms*/
 
 /* Global static variables. They must be in non-volatile memory. ZG           */
-static uint8_t  opData[4][26];  /* Cihazýn çalýþma parametrelerini tutar       */
-uint8_t  workingSet[4]; /* Cihaz çalýþýrken geçici olarak param. tutar */
-uint8_t  sonucRakam[10];/*Display edilecek HEX rakamlarýn BCD karþýlýðý*/
+static uint8_t  opData[4][26];  /* Cihazýn çalýþma parametrelerini tutar      */
+
 
 static uint8_t  ledSegment [33]={0xC0,0xF9,0xA4,0xB0,0x99,0x92,0x82,0xF8,0x80,0x90,
                           0x7F,0XFF,0x88,0xC6,0xA1,0x83,0x84,0x86,0x8E,0x89,
@@ -154,20 +155,22 @@ int main(void)
   BSP_LED_Init(LED5);
   BSP_LED_Init(LED6);
     
-  /* Start PWM signal generation on TIM1_Channel 1 *
-  if(HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK)
-  { Error_Handler();} * Configuration Error */
- 
   
   /** deneme alaný ??????????????????????????????????????????????????????????*/
+  sysTickBasla = HAL_GetTick();
+  SysTick_Handler(); /*bakalým nasýl çalýþýyor*/
+  temp = HAL_GetTick() - sysTickBasla;
   
-  /* Hex sayýlarýn Ondalýk karþýlýðý sonucRakam dizisinin 0 ve 1. hücresinde*/
-  /* Bu sayýlarýn 7-segment karþýlýðý ise ledSegment dizisinden alýnacak    */
+  
+  /* Hex sayýlarýn Ondalýk karþýlýðýný Hex2Decimal() fonksiyonu               */
+  /* sonucRakam[] dizisinin 0 ve 1. hücresine yazar.                          */
+  /* Bu sayýlarýn 7-segment karþýlýðý ise ledSegment[] dizisinden alýnarak    */
+  /* opData[][] dizisinin 10. sütundan sonrasýna bu fonksiyon yazar.          */
+  
+  convertHexToSegment(); 
 
-  convertHexToSegment(); /* Tabloya (opData) 7-seg verilerini yaz*/
-
-/*testingen*/  
-generatePwm (1199, 500);
+  /*testingen*/  
+  generatePwm (1199, 500);
 
   /* Infinite loop */
  /* USER CODE BEGIN WHILE */ 
@@ -347,6 +350,11 @@ void PULSE_Fonksiyonu (void)
 
 void ZG_INT_PRI_Set(void)
 {
+  uint32_t *ptr;
+ /* Disable interrupts and DMAs for channel 1,2,3 and 4 */
+  ptr = &TIM1_DIER;
+  *ptr &= (0x00000000);
+  
   NVIC_SetPriority(IRQn01, INT_PRIORITY_3);
   NVIC_SetPriority(IRQn23, INT_PRIORITY_0);
   NVIC_SetPriority(IRQn415, INT_PRIORITY_2);
